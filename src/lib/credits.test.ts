@@ -52,6 +52,8 @@ describe("chargeCredits / refundCredits", () => {
   it("never goes negative under concurrent over-charging (the atomicity claim this whole thing rests on)", async () => {
     // Balance is 20; fire ten concurrent charges of 3 each (30 total demand
     // against 20 available). At most 6 can succeed (6*3=18 <= 20 < 7*3=21).
+    // Longer timeout: over a real hosted DB (Neon's pooler) each round trip
+    // has real network latency, unlike local Postgres's near-instant socket.
     const attempts = await Promise.allSettled(
       Array.from({ length: 10 }, () => chargeCredits(userId, 3))
     );
@@ -66,5 +68,5 @@ describe("chargeCredits / refundCredits", () => {
     const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
     expect(user.credits).toBe(20 - succeeded * 3);
     expect(user.credits).toBeGreaterThanOrEqual(0);
-  });
+  }, 30000);
 });
