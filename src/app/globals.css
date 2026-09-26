@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+/*
+ * Visual identity, deliberately not a Higgsfield reskin (per plan.md/brief):
+ * Higgsfield leans dark, neon-gradient, "AI tool" chrome. This goes the other
+ * way — a warm, paper-toned "director's notebook" feel: cream ground, near-
+ * black ink, a single terracotta accent, serif headings + monospace for
+ * technical readouts (status, credits). Same interaction pattern, different
+ * execution, as instructed.
+ */
+:root {
+  --paper: #f6f1e7;
+  --paper-raised: #fffdf8;
+  --ink: #211d17;
+  --ink-muted: #6b6355;
+  --line: #ded4bd;
+  --accent: #b3522f;
+  --accent-ink: #fdf6ee;
+  --danger: #a3341e;
+  --danger-bg: #fbeae4;
+  --ok: #3c6e47;
+  --ok-bg: #e9f2ea;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: ui-serif, Georgia, "Times New Roman", serif;
+}
+
+.mono {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.01em;
+}

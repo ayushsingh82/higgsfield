@@ -5,11 +5,33 @@ import { getCurrentUserId } from "@/lib/auth";
 import { chargeCredits, refundCredits, InsufficientCreditsError } from "@/lib/credits";
 import { generateVideo, pickProviderModel } from "@/lib/videogen";
 import { uploadObject } from "@/lib/storage";
+import { serializeGeneration } from "@/lib/serialize";
+import { GENERATION_COST } from "@/lib/constants";
 
-const GENERATION_COST = 10;
+export async function GET() {
+  let userId: string;
+  try {
+    userId = await getCurrentUserId();
+  } catch {
+    return NextResponse.json({ error: "not authenticated" }, { status: 401 });
+  }
+
+  const generations = await prisma.generation.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return NextResponse.json(generations.map(serializeGeneration));
+}
 
 export async function POST(req: NextRequest) {
-  const userId = await getCurrentUserId();
+  let userId: string;
+  try {
+    userId = await getCurrentUserId();
+  } catch {
+    return NextResponse.json({ error: "not authenticated" }, { status: 401 });
+  }
+
   const body = await req.json();
   const prompt: string = body.prompt;
   const referenceImageUrl: string | undefined = body.referenceImageUrl;
@@ -51,7 +73,7 @@ export async function POST(req: NextRequest) {
     console.error(`generation ${generation.id} background job crashed`, err);
   });
 
-  return NextResponse.json(generation, { status: 202 });
+  return NextResponse.json(serializeGeneration(generation), { status: 202 });
 }
 
 async function runGenerationJob(generationId: string, params: { prompt: string; referenceImageUrl?: string }) {
