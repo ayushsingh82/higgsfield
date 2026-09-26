@@ -1,4 +1,4 @@
-import { InferenceClient } from "@huggingface/inference";
+import { InferenceClient, type InferenceProvider } from "@huggingface/inference";
 
 /**
  * Verified against Hugging Face's routed Inference Providers (huggingface_hub
@@ -19,7 +19,7 @@ import { InferenceClient } from "@huggingface/inference";
  * provider selection instead. Caught via the depleted-credits error message
  * naming "auto" instead of the intended provider.
  */
-const TASK_PROVIDER: Record<"text-to-video" | "image-to-video", { provider: string; model: string }> = {
+const TASK_PROVIDER: Record<"text-to-video" | "image-to-video", { provider: InferenceProvider; model: string }> = {
   "text-to-video": { provider: "replicate", model: "Wan-AI/Wan2.2-TI2V-5B" },
   "image-to-video": { provider: "wavespeed", model: "Wan-AI/Wan2.2-I2V-A14B" },
 };
@@ -30,7 +30,7 @@ interface GenerateVideoParams {
 }
 
 export interface VideoGenResult {
-  provider: string;
+  provider: InferenceProvider;
   model: string;
   video: Blob;
 }
@@ -47,8 +47,22 @@ export async function generateVideo({ prompt, referenceImageUrl }: GenerateVideo
   const client = new InferenceClient(hfToken);
 
   const video = referenceImageUrl
-    ? await client.imageToVideo({ provider, model, inputs: referenceImageUrl, parameters: { prompt } })
+    ? await client.imageToVideo({
+        provider,
+        model,
+        // imageToVideo's `inputs` type is Blob, not a URL string (confirmed
+        // by tsc against @huggingface/inference's own types) — fetch the
+        // reference image ourselves rather than passing the URL through.
+        inputs: await fetchAsBlob(referenceImageUrl),
+        parameters: { prompt },
+      })
     : await client.textToVideo({ provider, model, inputs: prompt });
 
   return { provider, model, video };
+}
+
+async function fetchAsBlob(url: string): Promise<Blob> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`failed to fetch reference image (${res.status}): ${url}`);
+  return res.blob();
 }

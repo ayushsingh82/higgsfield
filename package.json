@@ -11,7 +11,8 @@
     "db:generate": "prisma generate"
   },
   "dependencies": {
-    "@huggingface/inference": "^3",
+    "@aws-sdk/client-s3": "^3.1141.0",
+    "@huggingface/inference": "^4.13.30",
     "@prisma/client": "^6",
     "next": "^15",
     "react": "^19",
