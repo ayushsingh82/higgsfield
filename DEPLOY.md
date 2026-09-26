@@ -21,19 +21,32 @@ sequence to follow.
 
 Either way, that string is your `DATABASE_URL`.
 
-## 2. Hosting: Railway
+## 2. Hosting: Render
 
-Picked over Render/Fly for this repo specifically because the architecture
-requires an **always-on process** (the Hugging Face video-gen call blocks
-synchronously and can take 2+ minutes — see plan.md) plus **zero-config
-Nixpacks builds** for a plain Next.js app — no Dockerfile to write or debug.
-`railway.json` is already in the repo with the build/start commands.
+(Originally targeted Railway — its free trial expired and now requires a
+paid plan, so switched to Render's free web service tier instead. Still
+fits the architecture: Render's free web service runs as a real container
+process during active requests, which is what the always-on/synchronous
+HF-call design needs — see plan.md. The one real trade-off, not a bug:
+**free-tier services spin down after ~15 minutes with no inbound traffic,
+and the next request after that takes ~30–60s to cold-start the container
+back up.** If you're demoing this, load the URL a minute or two before
+recording so it's already warm — don't let the cold start happen live on
+camera and get mistaken for the app being broken.)
 
-1. Sign up at railway.app (GitHub login is easiest).
-2. New Project → Deploy from GitHub repo → pick `ayushsingh82/higgsfield`.
-3. Railway reads `railway.json` automatically: build = `npm run build`,
-   start = `npx prisma migrate deploy && npm start` (the migration runs
-   against whatever `DATABASE_URL` is set at deploy time — see below).
+`render.yaml` is already in the repo (a Render "Blueprint") with the build/
+start commands, so Render can pick it up automatically instead of you
+re-entering build settings by hand.
+
+1. Sign up at render.com (GitHub login is easiest).
+2. New → Blueprint → connect the `ayushsingh82/higgsfield` GitHub repo.
+   Render reads `render.yaml` from the repo root automatically: build =
+   `npm install && npm run build`, start = `npx prisma migrate deploy &&
+   npm start`, plan = `free`.
+3. If you instead create the service manually (New → Web Service, not
+   Blueprint), set: Runtime = Node, Build Command =
+   `npm install && npm run build`, Start Command =
+   `npx prisma migrate deploy && npm start`, Instance Type = Free.
 
 ## 3. Object storage: any S3-compatible bucket (Cloudflare R2 recommended, no card required on the free tier)
 
@@ -49,7 +62,7 @@ Nixpacks builds** for a plain Next.js app — no Dockerfile to write or debug.
    (`S3_BUCKET`), region (`S3_REGION` — R2 doesn't really use this, `auto`
    is fine and is already the code's default if you leave it unset).
 
-## 4. Environment variables to set in Railway (Project → Variables)
+## 4. Environment variables to set in Render (Dashboard → your service → Environment)
 
 | Variable | Value |
 | --- | --- |
@@ -62,7 +75,7 @@ Nixpacks builds** for a plain Next.js app — no Dockerfile to write or debug.
 | `S3_BUCKET` | from step 3 |
 | `S3_REGION` | from step 3 (or leave unset — defaults to `auto`) |
 | `STORAGE_PUBLIC_BASE_URL` | from step 3 |
-| `NODE_ENV` | `production` (Railway sets this by default, but confirm it's there) |
+| `NODE_ENV` | `production` (Render sets this by default, but confirm it's there) |
 
 `FAL_KEY` doesn't need to be set in production — it's unused by the app
 (fal.ai was replaced by Hugging Face; see plan.md).
@@ -76,9 +89,9 @@ something wrong. Confirmed by grep, not assumed:
 
 ## 5. First deploy
 
-1. Set all the variables above in Railway, then trigger the first deploy
-   (push to `main`, or Railway's "Deploy" button).
-2. `railway.json`'s start command runs `prisma migrate deploy` automatically
+1. Set all the variables above in Render, then trigger the first deploy
+   (push to `main`, or Render's "Manual Deploy" button).
+2. `render.yaml`'s start command runs `prisma migrate deploy` automatically
    before `next start` on every deploy, so the schema is applied
    automatically — no separate manual migration step needed after the first
    variables are set correctly.
@@ -90,10 +103,13 @@ something wrong. Confirmed by grep, not assumed:
 
 ## 6. Verify
 
-Once deployed, Railway gives you a `*.up.railway.app` URL (or attach a
-custom domain in Railway's Settings → Domains). Visit it signed out, sign
+Once deployed, Render gives you a `*.onrender.com` URL (or attach a custom
+domain in Render's Settings → Custom Domains). Visit it signed out, sign
 up, and confirm `/studio` and `/library` load — that satisfies "works for a
-signed-out visitor landing fresh" from plan.md's MVP list.
+signed-out visitor landing fresh" from plan.md's MVP list. If the first
+load is slow (~30–60s), that's the free-tier cold start from step 2, not a
+deploy problem — reload once it's warm and it'll be fast from then on
+until it idles out again.
 
 ## Known gap at deploy time
 

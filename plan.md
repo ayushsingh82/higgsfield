@@ -77,10 +77,13 @@ decisions — same underlying interaction pattern, different execution.
 - Single deploy unit for speed: full-stack framework (API routes + frontend in one
   app) over a split frontend/backend monorepo — less deploy surface to configure in a
   24h window.
-- **Deploy target: Railway/Render/Fly.io** (always-on Node process), not Vercel-style
-  serverless functions — required by the HF sync-call timeout issue below. Next.js
-  still works fine here via `next start`; only the hosting model changes, not the
-  framework.
+- **Deploy target: Render** (free web service tier, always-on-during-requests Node
+  process), not Vercel-style serverless functions — required by the HF sync-call
+  timeout issue below. Next.js still works fine here via `next start`; only the
+  hosting model changes, not the framework. (Originally targeted Railway; its free
+  trial expired mid-build and now requires a paid plan, so switched to Render's free
+  tier — same architecture fit, the one trade-off being free-tier idle spin-down
+  after ~15min with a ~30-60s cold start on the next request. See DEPLOY.md.)
 - Hosted Postgres (not self-managed) for persistence.
 - Hosted S3-compatible object storage for uploads/outputs (not self-hosted MinIO — no
   time for that infra).

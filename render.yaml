@@ -1,0 +1,9 @@
+services:
+  - name: higgsfield
+    type: web
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npx prisma migrate deploy && npm start
+    healthCheckPath: /
+    autoDeployTrigger: commit

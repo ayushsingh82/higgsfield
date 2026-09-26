@@ -76,6 +76,9 @@ Pick 2–3, don't read all of these verbatim:
 - [ ] Confirm current HF credit status — decide live whether the demo
       shows FAILED (honest, expected) or COMPLETED (if topped up)
 - [ ] Confirm the deployed URL is live and not localhost (brief requires it)
+- [ ] Load the deployed URL a minute or two before recording — Render's
+      free tier spins down after ~15min idle, and a cold start (~30-60s)
+      happening live on camera reads as the app being broken
 - [ ] Have one example prompt typed/ready to paste, don't compose on camera
 - [ ] Know the actual current credit balance/count so the number on screen
       matches what you say

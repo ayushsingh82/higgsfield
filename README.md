@@ -15,9 +15,10 @@ through the app yet, only through direct provider smoke tests (see
 
 ## Stack
 
-- Next.js (App Router), deployed as an always-on Node process (Railway/
-  Render/Fly.io) rather than serverless functions — required because the
-  Hugging Face video-gen call blocks synchronously and can take 2+ minutes.
+- Next.js (App Router), deployed to Render (free web service tier) as an
+  always-on Node process rather than serverless functions — required
+  because the Hugging Face video-gen call blocks synchronously and can
+  take 2+ minutes. See DEPLOY.md.
 - Postgres via Prisma (`prisma/schema.prisma`).
 - Video generation via Hugging Face Inference Providers (`HF_TOKEN`),
   `@huggingface/inference`'s `InferenceClient`.
