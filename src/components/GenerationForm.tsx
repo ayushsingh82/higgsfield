@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ASPECT_RATIOS, DURATIONS_SEC, GENERATION_COST } from "@/lib/constants";
+import { ALLOWED_IMAGE_TYPES, ASPECT_RATIOS, DURATIONS_SEC, GENERATION_COST, MAX_IMAGE_BYTES } from "@/lib/constants";
 
 export function GenerationForm() {
   const router = useRouter();
@@ -13,6 +13,25 @@ export function GenerationForm() {
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [stage, setStage] = useState<"idle" | "uploading" | "submitting">("idle");
   const [error, setError] = useState<string | null>(null);
+
+  function handleFileChange(file: File | null) {
+    setError(null);
+    if (file) {
+      if (!(ALLOWED_IMAGE_TYPES as readonly string[]).includes(file.type)) {
+        setError(`unsupported file type "${file.type || "unknown"}" — use PNG, JPEG, or WebP`);
+        setReferenceFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+      if (file.size > MAX_IMAGE_BYTES) {
+        setError(`file too large — 10MB max, got ${(file.size / 1024 / 1024).toFixed(1)}MB`);
+        setReferenceFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+    }
+    setReferenceFile(file);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -80,10 +99,13 @@ export function GenerationForm() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
-          onChange={(e) => setReferenceFile(e.target.files?.[0] ?? null)}
+          accept={ALLOWED_IMAGE_TYPES.join(",")}
+          onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
           className="mono text-sm"
         />
+        <p className="mono mt-1 text-xs text-[var(--ink-muted)]">
+          {referenceFile ? referenceFile.name : "PNG, JPEG, or WebP, 10MB max"}
+        </p>
       </div>
 
       <div className="mono flex gap-6 text-sm">
