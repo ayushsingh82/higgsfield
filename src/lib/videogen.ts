@@ -9,9 +9,15 @@ import { InferenceClient } from "@huggingface/inference";
  * tasks use different providers, not a typo.
  *
  * The `inputs`/`parameters` shape below matches HF's documented REST schema
- * for these tasks. It hasn't been round-tripped through this exact JS client
- * call yet (only the Python client was smoke-tested) — run one real
- * generation through the dev server before relying on this in front of users.
+ * for these tasks, and the request path itself is now confirmed by a live JS
+ * call on 2026-09-27 (see plan.md) — the call correctly reached HF's router
+ * and was rejected only by depleted monthly credits, not a malformed request.
+ * `provider` is a per-call arg on `BaseArgs`, NOT a constructor default (the
+ * Python client's `InferenceClient(provider=...)` constructor pattern does
+ * NOT carry over to JS — passing it to `new InferenceClient(token, {
+ * provider })` is silently ignored, and the client falls back to "auto"
+ * provider selection instead. Caught via the depleted-credits error message
+ * naming "auto" instead of the intended provider.
  */
 const TASK_PROVIDER: Record<"text-to-video" | "image-to-video", { provider: string; model: string }> = {
   "text-to-video": { provider: "replicate", model: "Wan-AI/Wan2.2-TI2V-5B" },
@@ -38,11 +44,11 @@ export async function generateVideo({ prompt, referenceImageUrl }: GenerateVideo
   if (!hfToken) throw new Error("HF_TOKEN is not set");
 
   const { provider, model } = pickProviderModel(referenceImageUrl);
-  const client = new InferenceClient(hfToken, { provider });
+  const client = new InferenceClient(hfToken);
 
   const video = referenceImageUrl
-    ? await client.imageToVideo({ model, inputs: referenceImageUrl, parameters: { prompt } })
-    : await client.textToVideo({ model, inputs: prompt });
+    ? await client.imageToVideo({ provider, model, inputs: referenceImageUrl, parameters: { prompt } })
+    : await client.textToVideo({ provider, model, inputs: prompt });
 
   return { provider, model, video };
 }

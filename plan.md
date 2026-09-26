@@ -132,3 +132,26 @@ a config value, and they're being written down here rather than quietly absorbed
 Models verified working end-to-end just now:
 - Text-to-video: `provider="replicate"`, `model="Wan-AI/Wan2.2-TI2V-5B"`
 - Image-to-video: `provider="wavespeed"`, `model="Wan-AI/Wan2.2-I2V-A14B"`
+
+### Update 2026-09-27: JS client verification hit the depleted-credits wall
+
+Ran the actual JS `@huggingface/inference` call path (not just Python) to close
+out the one open risk from above. Two findings:
+
+1. **Real bug caught**: `InferenceClient`'s JS constructor does *not* accept
+   `provider` as a default the way the Python client does — passing it via
+   `new InferenceClient(token, { provider })` is silently ignored, and the
+   client falls back to `"auto"` provider selection instead (visible in the
+   client's own log line). Fixed in `src/lib/videogen.ts`: `provider` now goes
+   on each call's args object (`client.textToVideo({ provider, model, ... })`),
+   which is where `BaseArgs` actually defines it.
+2. **Free-tier credits are now fully depleted** — the call reached HF's router
+   correctly (this confirms the request shape is valid) but was rejected with
+   "You have depleted your monthly included credits." This is the risk flagged
+   above materializing already, sooner than expected (two Python + one JS test
+   call used it up). No further live generation is possible until the monthly
+   reset or a top-up. The person is aware and has decided not to add funds
+   preemptively — this is a known, accepted gap, not an oversight: **the fixed
+   code path is believed correct (request reached the server validly) but has
+   not yet produced a completed video via the JS client** — that confirmation
+   is still pending a working credit balance.
