@@ -9,7 +9,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _common import append_entry, DEFAULT_MODEL  # noqa: E402
+from _common import append_entry, log_debug, DEFAULT_MODEL  # noqa: E402
 
 
 def main():
@@ -26,9 +26,12 @@ def main():
     if prompt:
         append_entry(session_id, "PROMPT", prompt, model)
 
-    # Must not block the prompt; exit 0 with no stdout means "continue normally".
-    sys.exit(0)
-
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        import traceback
+        log_debug("capture_prompt.py FAILED:\n" + traceback.format_exc())
+    # Must not block the prompt; exit 0 with no stdout means "continue normally".
+    sys.exit(0)

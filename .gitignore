@@ -8,4 +8,6 @@ build/
 *.log
 __pycache__/
 *.pyc
+.agent-logs/.hook.lock
+!.agent-logs/.hook-debug.log
 .turbo/

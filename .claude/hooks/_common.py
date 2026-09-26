@@ -4,15 +4,25 @@ Both capture_prompt.py (UserPromptSubmit) and capture_response.py (Stop)
 import this. Kept dependency-free (stdlib only) so it runs under any
 Python 3 without a venv.
 """
+import fcntl
 import glob
 import json
 import os
 import re
 import subprocess
+import traceback
 from datetime import datetime, timezone
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 LOG_DIR = os.path.join(REPO_ROOT, ".agent-logs")
+DEBUG_LOG = os.path.join(LOG_DIR, ".hook-debug.log")
+LOCK_FILE = os.path.join(LOG_DIR, ".hook.lock")
+
+
+def log_debug(msg):
+    os.makedirs(LOG_DIR, exist_ok=True)
+    with open(DEBUG_LOG, "a") as f:
+        f.write(f"{datetime.now(timezone.utc).isoformat()} {msg}\n")
 
 DEFAULT_MODEL = "claude-sonnet-5"
 TOOL_NAME = "claude-code"
@@ -110,30 +120,47 @@ def count_entries(body, entry_type):
 
 
 def append_entry(session_id, entry_type, text, model):
-    path = ensure_log_file(session_id, model)
-    with open(path, "r") as f:
-        content = f.read()
-    fm, body = parse_frontmatter(content)
+    os.makedirs(LOG_DIR, exist_ok=True)
+    lock_fd = open(LOCK_FILE, "w")
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
 
-    if entry_type == "PROMPT":
-        num = count_entries(body, "PROMPT") + 1
-    else:
-        # Response answers the most recently opened prompt.
-        num = max(count_entries(body, "PROMPT"), 1)
+        path = ensure_log_file(session_id, model)
+        with open(path, "r") as f:
+            content = f.read()
+        fm, body = parse_frontmatter(content)
 
-    ts = now_iso()
-    entry = (
-        f"\n[LOG_ENTRY type={entry_type} num={num} session={session_id}]\n"
-        f"timestamp: {ts}\n"
-        f"model: {model or fm.get('model', DEFAULT_MODEL)}\n\n"
-        f"{text.strip()}\n\n"
-    )
+        if entry_type == "PROMPT":
+            num = count_entries(body, "PROMPT") + 1
+        else:
+            existing_responses = count_entries(body, "RESPONSE")
+            prompt_count = count_entries(body, "PROMPT")
+            if existing_responses >= prompt_count:
+                # Already logged a response for the latest prompt (duplicate
+                # Stop firing) — skip instead of appending a stray entry.
+                log_debug(
+                    f"skip duplicate RESPONSE session={session_id} "
+                    f"prompts={prompt_count} responses={existing_responses}"
+                )
+                return path
+            num = prompt_count
 
-    fm["last_prompt_time"] = ts
-    fm["total_exchanges"] = str(num)
-    fm.setdefault("model", model or DEFAULT_MODEL)
+        ts = now_iso()
+        entry = (
+            f"\n[LOG_ENTRY type={entry_type} num={num} session={session_id}]\n"
+            f"timestamp: {ts}\n"
+            f"model: {model or fm.get('model', DEFAULT_MODEL)}\n\n"
+            f"{text.strip()}\n\n"
+        )
 
-    new_content = build_frontmatter(fm) + body.rstrip("\n") + "\n" + entry
-    with open(path, "w") as f:
-        f.write(new_content)
-    return path
+        fm["last_prompt_time"] = ts
+        fm["total_exchanges"] = str(num)
+        fm.setdefault("model", model or DEFAULT_MODEL)
+
+        new_content = build_frontmatter(fm) + body.rstrip("\n") + "\n" + entry
+        with open(path, "w") as f:
+            f.write(new_content)
+        return path
+    finally:
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        lock_fd.close()

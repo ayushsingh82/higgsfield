@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/capture_prompt.py\""
+            "command": "python3 /Users/ayush/Desktop/8x/higgsfield/.claude/hooks/capture_prompt.py"
           }
         ]
       }
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/capture_response.py\""
+            "command": "python3 /Users/ayush/Desktop/8x/higgsfield/.claude/hooks/capture_response.py"
           }
         ]
       }

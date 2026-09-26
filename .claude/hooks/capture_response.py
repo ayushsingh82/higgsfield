@@ -11,9 +11,15 @@ matching the most recent PROMPT entry.
 import json
 import sys
 import os
+import time
 
 sys.path.insert(0, os.path.dirname(__file__))
-from _common import append_entry, DEFAULT_MODEL  # noqa: E402
+from _common import append_entry, log_debug, DEFAULT_MODEL  # noqa: E402
+
+# Stop fires essentially concurrently with the transcript's final write; a
+# fresh read can land 50-100ms before that write is flushed to disk. Retry
+# briefly instead of giving up on the first empty read.
+RETRY_DELAYS = [0.15, 0.25, 0.4, 0.6, 1.0]  # ~2.4s total worst case
 
 
 def extract_text_blocks(content):
@@ -87,6 +93,14 @@ def main():
     transcript_path = data.get("transcript_path")
 
     response_text, model_from_transcript = last_assistant_response(transcript_path)
+    attempts = 1
+    for delay in RETRY_DELAYS:
+        if response_text:
+            break
+        time.sleep(delay)
+        response_text, model_from_transcript = last_assistant_response(transcript_path)
+        attempts += 1
+
     model = (
         model_from_transcript
         or os.environ.get("CLAUDE_LOG_MODEL")
@@ -94,10 +108,23 @@ def main():
     )
 
     if response_text:
+        if attempts > 1:
+            log_debug(
+                f"response_text recovered after {attempts} attempts "
+                f"session={session_id}"
+            )
         append_entry(session_id, "RESPONSE", response_text, model)
-
-    sys.exit(0)
+    else:
+        log_debug(
+            f"empty response_text after {attempts} attempts session={session_id} "
+            f"transcript_path={transcript_path}"
+        )
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        import traceback
+        log_debug("capture_response.py FAILED:\n" + traceback.format_exc())
+    sys.exit(0)
