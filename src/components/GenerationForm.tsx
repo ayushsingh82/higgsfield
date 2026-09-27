@@ -81,40 +81,47 @@ export function GenerationForm() {
   const busy = stage !== "idle";
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6"
+    >
       <div>
-        <label className="mono mb-1 block text-xs text-[var(--ink-muted)]">prompt</label>
+        <label className="mono mb-1.5 block text-xs uppercase tracking-wide text-[var(--muted-foreground)]">
+          prompt
+        </label>
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="A calm ocean wave rolling onto a sandy beach at sunset, cinematic lighting…"
           required
           rows={4}
-          className="w-full rounded-sm border border-[var(--line)] bg-[var(--paper-raised)] p-3"
+          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-3 outline-none focus:border-[var(--brand)]"
         />
       </div>
 
       <div>
-        <label className="mono mb-1 block text-xs text-[var(--ink-muted)]">reference image (optional)</label>
+        <label className="mono mb-1.5 block text-xs uppercase tracking-wide text-[var(--muted-foreground)]">
+          reference image (optional)
+        </label>
         <input
           ref={fileInputRef}
           type="file"
           accept={ALLOWED_IMAGE_TYPES.join(",")}
           onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
-          className="mono text-sm"
+          className="mono file:mr-3 file:rounded-full file:border-0 file:bg-[var(--surface-raised)] file:px-3 file:py-1.5 file:text-[var(--foreground)] text-sm text-[var(--muted-foreground)]"
         />
-        <p className="mono mt-1 text-xs text-[var(--ink-muted)]">
+        <p className="mono mt-1.5 text-xs text-[var(--muted-foreground)]">
           {referenceFile ? referenceFile.name : "PNG, JPEG, or WebP, 10MB max"}
         </p>
       </div>
 
       <div className="mono flex gap-6 text-sm">
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1.5 text-[var(--muted-foreground)]">
           aspect
           <select
             value={aspectRatio}
             onChange={(e) => setAspectRatio(e.target.value as (typeof ASPECT_RATIOS)[number])}
-            className="rounded-sm border border-[var(--line)] bg-[var(--paper-raised)] px-2 py-1"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-2.5 py-1.5 text-[var(--foreground)] outline-none focus:border-[var(--brand)]"
           >
             {ASPECT_RATIOS.map((ratio) => (
               <option key={ratio} value={ratio}>
@@ -123,12 +130,12 @@ export function GenerationForm() {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1.5 text-[var(--muted-foreground)]">
           duration
           <select
             value={durationSec}
             onChange={(e) => setDurationSec(Number(e.target.value) as (typeof DURATIONS_SEC)[number])}
-            className="rounded-sm border border-[var(--line)] bg-[var(--paper-raised)] px-2 py-1"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-2.5 py-1.5 text-[var(--foreground)] outline-none focus:border-[var(--brand)]"
           >
             {DURATIONS_SEC.map((d) => (
               <option key={d} value={d}>
@@ -139,12 +146,12 @@ export function GenerationForm() {
         </label>
       </div>
 
-      <div className="flex items-center justify-between border-t border-[var(--line)] pt-4">
-        <span className="mono text-sm text-[var(--ink-muted)]">{GENERATION_COST} credits</span>
+      <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">
+        <span className="mono text-sm text-[var(--muted-foreground)]">{GENERATION_COST} credits</span>
         <button
           type="submit"
           disabled={busy}
-          className="mono rounded-sm bg-[var(--accent)] px-5 py-2 text-sm text-[var(--accent-ink)] disabled:opacity-50"
+          className="mono rounded-full bg-[var(--brand)] px-5 py-2 text-sm font-medium text-[var(--brand-ink)] disabled:opacity-50"
         >
           {stage === "uploading" ? "uploading reference…" : stage === "submitting" ? "starting…" : "generate"}
         </button>

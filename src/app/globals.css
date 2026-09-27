@@ -1,25 +1,39 @@
 @import "tailwindcss";
 
 /*
- * Visual identity, deliberately not a Higgsfield reskin (per plan.md/brief):
- * Higgsfield leans dark, neon-gradient, "AI tool" chrome. This goes the other
- * way — a warm, paper-toned "director's notebook" feel: cream ground, near-
- * black ink, a single terracotta accent, serif headings + monospace for
- * technical readouts (status, credits). Same interaction pattern, different
- * execution, as instructed.
+ * Visual identity, v2: restyled at the person's explicit direction to
+ * reference pixovid.com's color theme/layout patterns (see plan.md's
+ * "Remaining polish" section — the "own visual identity" tension was
+ * raised once, heard, and the person chose to proceed anyway). Palette
+ * and layout vocabulary (dark canvas, lime CTA, pill status badges,
+ * translucent card surfaces) are inspiration pulled from the pixovid repo
+ * on disk; this file, the component structure, and the copy are written
+ * fresh, not copied from it.
  */
 :root {
-  --paper: #f6f1e7;
-  --paper-raised: #fffdf8;
-  --ink: #211d17;
-  --ink-muted: #6b6355;
-  --line: #ded4bd;
-  --accent: #b3522f;
-  --accent-ink: #fdf6ee;
-  --danger: #a3341e;
-  --danger-bg: #fbeae4;
-  --ok: #3c6e47;
-  --ok-bg: #e9f2ea;
+  --background: oklch(0.045 0 0);
+  --surface: oklch(0.09 0 0);
+  --surface-raised: oklch(0.12 0 0);
+  --foreground: oklch(0.98 0 0);
+  --muted-foreground: oklch(0.64 0 0);
+  --border: oklch(1 0 0 / 10%);
+
+  /* Brand: electric lime primary CTA, hot-pink secondary accent. */
+  --brand: oklch(0.92 0.21 124);
+  --brand-ink: oklch(0.18 0.02 124);
+  --brand-2: oklch(0.66 0.24 357);
+
+  /* Status colors — kept semantically distinct from brand color, since a
+     status badge's job is to be read correctly at a glance, not to match
+     the CTA. */
+  --danger: oklch(0.7 0.19 25);
+  --danger-bg: oklch(0.7 0.19 25 / 14%);
+  --ok: oklch(0.75 0.17 145);
+  --ok-bg: oklch(0.75 0.17 145 / 14%);
+  --pending: oklch(0.8 0.16 80);
+  --pending-bg: oklch(0.8 0.16 80 / 14%);
+
+  --radius: 0.75rem;
 }
 
 * {
@@ -27,12 +41,43 @@
 }
 
 body {
-  background: var(--paper);
-  color: var(--ink);
-  font-family: ui-serif, Georgia, "Times New Roman", serif;
+  min-height: 100vh;
+  background-color: var(--background);
+  background-image: radial-gradient(
+    ellipse 70rem 30rem at 50% -10rem,
+    oklch(0.92 0.21 124 / 8%),
+    transparent 70%
+  );
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  color: var(--foreground);
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
 }
 
 .mono {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   letter-spacing: 0.01em;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(1 0 0 / 16%) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: oklch(1 0 0 / 14%);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }

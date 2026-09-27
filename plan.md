@@ -158,3 +158,17 @@ out the one open risk from above. Two findings:
    code path is believed correct (request reached the server validly) but has
    not yet produced a completed video via the JS client** — that confirmation
    is still pending a working credit balance.
+
+## Remaining polish before submission
+
+- **Professional README** — currently a placeholder (status blurb only). Needs: what
+  it is, live link, screenshots/gif if easy, stack, local setup, and a pointer to
+  `plan.md`/`.agent-logs/` for process/scope reasoning, matching the quality bar of
+  the rest of the submission.
+- **UI polish pass** — current `/studio`/`/library` styling is functional but not
+  fully refined. Decision (explicit, not silent): restyle to reference pixovid.com's
+  color theme/layout patterns, at the person's direction, having flagged the tension
+  with "own visual identity" once — the person heard the concern and chose to proceed
+  anyway. Pull palette/spacing/layout *inspiration* from the (separately-owned)
+  `pixovid` repo already on disk; write original CSS/components rather than copying
+  its files directly. Interaction pattern and copy stay ours either way.

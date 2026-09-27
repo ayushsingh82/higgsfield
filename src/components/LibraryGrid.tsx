@@ -51,9 +51,15 @@ export function LibraryGrid() {
     };
   }, []);
 
-  if (error) return <p className="mono text-sm text-[var(--ink-muted)]">{error}</p>;
-  if (rows === null) return <p className="mono text-sm text-[var(--ink-muted)]">loading…</p>;
-  if (rows.length === 0) return <p className="mono text-sm text-[var(--ink-muted)]">nothing yet — go generate something.</p>;
+  if (error) return <p className="mono text-sm text-[var(--muted-foreground)]">{error}</p>;
+  if (rows === null) return <p className="mono text-sm text-[var(--muted-foreground)]">loading…</p>;
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-10 text-center">
+        <p className="mono text-sm text-[var(--muted-foreground)]">nothing yet — go generate something.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -64,33 +70,40 @@ export function LibraryGrid() {
   );
 }
 
+const STATUS_ACCENT: Record<GenerationStatus, string> = {
+  PENDING: "border-[var(--border)]",
+  IN_PROGRESS: "border-[var(--pending)]/40",
+  COMPLETED: "border-[var(--ok)]/40",
+  FAILED: "border-[var(--danger)]/50",
+};
+
 function GenerationCard({ row }: { row: GenerationRow }) {
   return (
     <div
-      className={`rounded-sm border p-4 ${
-        row.status === "FAILED" ? "border-[var(--danger)] bg-[var(--danger-bg)]" : "border-[var(--line)] bg-[var(--paper-raised)]"
+      className={`rounded-2xl border bg-[var(--surface)] p-4 transition-colors ${STATUS_ACCENT[row.status]} ${
+        row.status === "FAILED" ? "bg-[var(--danger-bg)]" : ""
       }`}
     >
-      <div className="mono mb-2 flex items-center justify-between text-xs text-[var(--ink-muted)]">
+      <div className="mb-3 flex items-center justify-between">
         <StatusBadge status={row.status} />
-        <span>
+        <span className="mono text-xs text-[var(--muted-foreground)]">
           {row.aspectRatio} · {row.durationSec}s · {row.creditsCost} credits
         </span>
       </div>
 
-      <p className="mb-3 line-clamp-2 text-sm">{row.prompt}</p>
+      <p className="mb-3 line-clamp-2 text-sm text-[var(--foreground)]">{row.prompt}</p>
 
       {row.status === "COMPLETED" && row.videoUrl && <VideoPlayer src={row.videoUrl} />}
 
       {row.status === "FAILED" && (
-        <p className="mono rounded-sm bg-[var(--paper-raised)] p-2 text-xs text-[var(--danger)]">
+        <p className="mono rounded-lg bg-[var(--surface-raised)] p-2.5 text-xs text-[var(--danger)]">
           {row.errorMessage ?? "generation failed"}
         </p>
       )}
 
       {!isTerminal(row.status) && (
-        <div className="mono flex items-center gap-2 text-xs text-[var(--ink-muted)]">
-          <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--accent)]" />
+        <div className="mono flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--pending)]" />
           {row.status === "PENDING" ? "queued…" : "generating…"}
         </div>
       )}
@@ -98,12 +111,17 @@ function GenerationCard({ row }: { row: GenerationRow }) {
   );
 }
 
+const STATUS_BADGE: Record<GenerationStatus, string> = {
+  PENDING: "bg-[var(--surface-raised)] text-[var(--muted-foreground)]",
+  IN_PROGRESS: "bg-[var(--pending-bg)] text-[var(--pending)]",
+  COMPLETED: "bg-[var(--ok-bg)] text-[var(--ok)]",
+  FAILED: "bg-[var(--danger-bg)] text-[var(--danger)]",
+};
+
 function StatusBadge({ status }: { status: GenerationStatus }) {
-  const styles: Record<GenerationStatus, string> = {
-    PENDING: "text-[var(--ink-muted)]",
-    IN_PROGRESS: "text-[var(--accent)]",
-    COMPLETED: "text-[var(--ok)]",
-    FAILED: "text-[var(--danger)]",
-  };
-  return <span className={styles[status]}>{status.toLowerCase().replace("_", " ")}</span>;
+  return (
+    <span className={`mono inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_BADGE[status]}`}>
+      {status.toLowerCase().replace("_", " ")}
+    </span>
+  );
 }

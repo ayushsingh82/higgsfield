@@ -26,29 +26,34 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <header className="border-b border-[var(--line)] bg-[var(--paper-raised)]">
+        <header className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur">
           <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
             <Link href="/" className="text-lg font-semibold tracking-tight">
-              higgsfield <span className="mono text-sm font-normal text-[var(--ink-muted)]">/ cinema studio</span>
+              higgsfield <span className="mono text-sm font-normal text-[var(--muted-foreground)]">/ cinema studio</span>
             </Link>
-            <nav className="mono flex items-center gap-5 text-sm">
-              <Link href="/studio" className="hover:underline">
+            <nav className="mono flex items-center gap-5 text-sm text-[var(--muted-foreground)]">
+              <Link href="/studio" className="transition-colors hover:text-[var(--foreground)]">
                 studio
               </Link>
-              <Link href="/library" className="hover:underline">
+              <Link href="/library" className="transition-colors hover:text-[var(--foreground)]">
                 library
               </Link>
               {user ? (
                 <>
-                  <span className="text-[var(--ink-muted)]">{user.credits} credits</span>
+                  <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs text-[var(--foreground)]">
+                    {user.credits} credits
+                  </span>
                   <LogoutButton />
                 </>
               ) : (
                 <>
-                  <Link href="/login" className="hover:underline">
+                  <Link href="/login" className="transition-colors hover:text-[var(--foreground)]">
                     log in
                   </Link>
-                  <Link href="/signup" className="hover:underline">
+                  <Link
+                    href="/signup"
+                    className="rounded-full bg-[var(--brand)] px-3 py-1.5 text-[var(--brand-ink)] transition-opacity hover:opacity-90"
+                  >
                     sign up
                   </Link>
                 </>
