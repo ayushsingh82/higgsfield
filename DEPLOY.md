@@ -9,17 +9,29 @@ sequence to follow.
 
 **Neon** (neon.tech):
 1. Sign up, create a project (any region).
-2. Copy the connection string it gives you — use the "pooled connection"
-   variant if offered. It looks like:
-   `postgresql://<user>:<password>@<host>/<dbname>?sslmode=require`
+2. Copy **both** connection strings Neon's dashboard shows: the "Pooled
+   connection" (host ends in `-pooler`) is your `DATABASE_URL`, and the
+   "Direct connection" (same host, no `-pooler`) is your `DIRECT_URL`.
+   Both needed — see why below.
 
 **Supabase** (supabase.com) instead:
 1. Sign up, create a project.
-2. Project Settings → Database → Connection string → URI (use the
-   "Transaction" pooler mode for a serverless-friendly connection). Same
-   `postgresql://...` shape.
+2. Project Settings → Database → Connection string → URI. Use the
+   "Transaction" pooler mode string as `DATABASE_URL`, and the direct
+   (non-pooled) string as `DIRECT_URL` — same reasoning as Neon below.
 
-Either way, that string is your `DATABASE_URL`.
+**Why both**: `prisma migrate deploy` takes a session-level Postgres
+advisory lock before applying migrations. Pooled connections (PgBouncer /
+Neon's pooler, in transaction mode) don't reliably support session-scoped
+locks — worse, the lock can get silently left behind on a pooled backend
+connection that then gets reused for ordinary app queries, permanently
+"stuck" until that connection is manually terminated. Confirmed this
+concretely on this project's actual database (not just from docs): found
+a real leaked lock sitting on an idle connection that had last run an
+ordinary `Generation` query, unrelated to any migration. `directUrl` in
+`prisma/schema.prisma` routes migrate/CLI commands over the *unpooled*
+connection specifically, so they never take that lock through the pooler
+in the first place; normal app queries keep using the pooled `url`.
 
 ## 2. Hosting: Render
 
@@ -74,7 +86,8 @@ something better comes along.
 
 | Variable | Value |
 | --- | --- |
-| `DATABASE_URL` | the Neon/Supabase connection string from step 1 |
+| `DATABASE_URL` | the **pooled** Neon/Supabase connection string from step 1 |
+| `DIRECT_URL` | the **direct/unpooled** connection string from step 1 — required, or `prisma migrate deploy` in the start command will fail (P1002 advisory-lock timeout, or a clear "Environment variable not found: DIRECT_URL" if this is missing entirely) |
 | `HF_TOKEN` | your Hugging Face token (same one as local `.env`) |
 | `AUTH_SECRET` | a new random secret for production — generate with `openssl rand -hex 32`, don't reuse the local dev one |
 | `S3_ENDPOINT` | from step 3 |
@@ -103,9 +116,23 @@ something wrong. Confirmed by grep, not assumed:
    automatically — no separate manual migration step needed after the first
    variables are set correctly.
 3. If you ever need to run it by hand instead (e.g. to debug), from your own
-   machine with `DATABASE_URL` pointed at the hosted DB:
+   machine with `DATABASE_URL`/`DIRECT_URL` pointed at the hosted DB:
    ```
-   DATABASE_URL="<hosted connection string>" npx prisma migrate deploy
+   DATABASE_URL="<pooled>" DIRECT_URL="<direct>" npx prisma migrate deploy
+   ```
+4. **If migrate deploy hangs/times out with P1002 again** (advisory lock),
+   it means a lock got left behind on some backend connection — this
+   happened once already before `DIRECT_URL` was wired in. To confirm and
+   clear it (needs the direct connection string):
+   ```sql
+   -- find who's holding it (72707369 is this project's migration lock id;
+   -- Prisma prints the exact number in its own P1002 error if it differs)
+   SELECT l.pid, a.state, a.query_start, left(a.query, 80)
+   FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid
+   WHERE l.locktype = 'advisory' AND l.objid = 72707369;
+
+   -- if it's idle (not an active transaction), safe to clear:
+   SELECT pg_terminate_backend(<pid from above>);
    ```
 
 ## 6. Verify
