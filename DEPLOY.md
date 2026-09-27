@@ -97,9 +97,6 @@ something better comes along.
 | `S3_REGION` | from step 3 (or leave unset — defaults to `auto`) |
 | `NODE_ENV` | `production` (Render sets this by default, but confirm it's there) |
 
-`FAL_KEY` doesn't need to be set in production — it's unused by the app
-(fal.ai was replaced by Hugging Face; see plan.md).
-
 Nothing in the code has a hardcoded fallback for any of these — every one
 of them throws a clear error at the point of use if missing, so a
 misconfigured deploy fails loudly rather than silently falling back to

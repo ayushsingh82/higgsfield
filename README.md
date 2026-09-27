@@ -35,26 +35,106 @@ every cut (and why Cinema Studio specifically) is in [`plan.md`](./plan.md).
 
 **Honest current gap**: video generation resolves to `FAILED` rather than
 `COMPLETED` right now, because the Hugging Face free-tier inference
-credits backing this are exhausted (a known, accepted tradeoff — see
-`plan.md`'s provider-decision section). The pipeline itself is verified
-working end to end; it just needs a funded account to actually produce a
-video instead of erroring out. That's what you'll see if you try it live.
+credits backing this are exhausted, and topping them up was a deliberate
+"no" (see `plan.md` — final, settled decision, not an oversight). The
+pipeline itself is verified working end to end; it just needs a funded
+account to actually produce a video instead of erroring out. That's what
+you'll see if you try it live, and it's what the demo walkthrough shows on
+purpose.
 
-## Stack
+## Architecture
 
-- **Next.js** (App Router), deployed to **Render** (free web service tier)
-  as an always-on Node process rather than serverless functions —
-  required because the video-gen call blocks synchronously and can take
-  2+ minutes.
-- **Postgres** (hosted on Neon) via **Prisma**.
-- **Hugging Face Inference Providers** (`@huggingface/inference`) for
-  video generation — routes to different underlying providers
-  (replicate/wavespeed) depending on whether a reference image is
-  present.
-- **Backblaze B2** (S3-compatible) for object storage, private bucket +
-  presigned URLs.
-- **Tailwind CSS v4** for styling.
-- **Vitest** for tests.
+Single Next.js app (App Router), deployed as one always-on process — no
+separate frontend/backend, no external job queue. How a generation request
+actually flows through it:
+
+```
+Browser (GenerationForm)
+  │  1. optional reference image → POST /api/uploads
+  │     (validates type/size, uploads to B2, returns a storage key)
+  │
+  │  2. POST /api/generations { prompt, referenceImageKey?, aspectRatio, durationSec }
+  ▼
+POST /api/generations/route.ts
+  │  - auth check, charge credits atomically (rejects with 402 if insufficient)
+  │  - INSERT Generation row, status=PENDING
+  │  - fires an in-process background task WITHOUT awaiting it, then
+  │    responds 202 immediately
+  ▼
+runGenerationJob() — same Node process, keeps running after the response
+  │  - status → IN_PROGRESS
+  │  - if a reference image key is set: mint a fresh presigned GET url for
+  │    it (src/lib/storage.ts), fetch the bytes
+  │  - call Hugging Face Inference Providers (src/lib/videogen.ts) —
+  │    provider+model chosen by task: `replicate` for text-to-video,
+  │    `wavespeed` for image-to-video (replicate doesn't support that task
+  │    on HF's router at all)
+  │  - on success: upload the returned video bytes to B2, status → COMPLETED
+  │  - on failure: status → FAILED, store the real error message, refund
+  │    credits atomically
+  ▼
+Browser (LibraryGrid) — polls GET /api/generations every 2s, renders
+  whatever the row's current status is (queued/generating/failed-with-
+  message/completed-with-player)
+```
+
+This shape — fire-and-forget in the same process, not a separate queue —
+is *why* the deploy target had to be an always-on host (Render) rather
+than a serverless platform: the Hugging Face call blocks synchronously and
+can take 2+ minutes for image-to-video, which a serverless function would
+get killed partway through.
+
+### Data model
+
+Two tables (`prisma/schema.prisma`):
+
+- **`User`** — `id`, `email`, `passwordHash`, `credits` (seeded at 100),
+  `createdAt`.
+- **`Generation`** — `id`, `userId`, `prompt`, `referenceImageKey?` (a B2
+  storage key, not a URL — the bucket is private), `provider`/`model`
+  (both stored, not just one, since HF requires both and picks differently
+  per task), `aspectRatio`, `durationSec`, `status`
+  (`PENDING`/`IN_PROGRESS`/`COMPLETED`/`FAILED`), `outputKey?`,
+  `creditsCost`, `errorMessage?`, `createdAt`, `completedAt?`.
+
+## External services used, and why each one
+
+Real reasons, not re-derived after the fact — pulled forward from the
+decisions as they were actually made (`plan.md`/`DEPLOY.md` have the full
+detail):
+
+- **[Hugging Face](https://huggingface.co/join)** — the video-generation
+  provider. Originally fal.ai; switched after its account balance was
+  exhausted mid-build and topping it up was declined (a real cost
+  decision, not a technical one). HF's routed Inference Providers let
+  generation keep working against a free-tier account without a separate
+  per-provider signup, at the cost of a real architecture change (HF's
+  call is synchronous, not an async queue like fal's) and a real quality
+  step down (open-weight Wan 2.2 models vs. fal's Veo 3.1/Seedance/Kling
+  tier) — documented honestly in `plan.md`, not glossed over.
+- **[Neon](https://neon.tech)** — hosted Postgres. Picked for a genuinely
+  free, no-card-required tier that still gives a real production-grade
+  managed Postgres instance rather than something to self-host in a
+  24-hour window. Its pooled connection is why `DIRECT_URL` exists at all
+  (see `DEPLOY.md` for the real incident that surfaced this: a leaked
+  session-level advisory lock through the pooler that broke
+  `prisma migrate deploy`).
+- **[Render](https://render.com)** — hosting. Originally Railway; its free
+  trial expired mid-build and started requiring a paid plan, so switched
+  to Render's free web service tier. Both fit the same real requirement —
+  an always-on process, not serverless functions, because of how the HF
+  call behaves (see Architecture above) — Render just doesn't have a card
+  requirement on its free tier. The one real trade-off: free services
+  spin down after ~15 min idle, with a ~30–60s cold start on the next
+  request.
+- **[Backblaze B2](https://www.backblaze.com/cloud-storage)** — S3-
+  compatible object storage for uploaded reference images and generated
+  video output. Picked over other S3-compatible options because its free
+  tier doesn't require a card *and* — the real reason the bucket ended up
+  private rather than public — B2 specifically wants either payment
+  history or a one-time fee to allow a public bucket. Landed on presigned
+  URLs instead, which is arguably better practice regardless of the fee
+  (smaller exposure surface than a public bucket).
 
 ## Local setup
 
@@ -65,8 +145,8 @@ npm run db:migrate
 npm run dev
 ```
 
-`DIRECT_URL` matters if your Postgres is behind a connection pooler (e.g.
-Neon's pooled connection) — see `DEPLOY.md` for why.
+Every variable in `.env.example` has an inline comment saying what it's
+for and, where relevant, where to get it.
 
 ## Testing
 
@@ -81,16 +161,18 @@ decision (text-to-video vs. image-to-video).
 
 ## More context
 
-- [`plan.md`](./plan.md) — scope decision, cut list, data model, and every
-  significant tradeoff made along the way (provider switches, architecture
-  changes, deploy-target changes), written down as they happened rather
+- [`plan.md`](./plan.md) — the scope decision, cut list, data model, and
+  every significant tradeoff made along the way (provider switches,
+  architecture changes, deploy-target changes, the two final "settled"
+  decisions on theme and no-topup), written down as they happened rather
   than smoothed over afterward.
 - [`DEPLOY.md`](./DEPLOY.md) — exact steps to stand this up on a fresh
   Neon + Render + B2 setup, including a couple of real production
-  incidents (a leaked Postgres advisory lock through a pooled connection)
-  and how they were diagnosed and fixed.
-- [`DEMO-NOTES.md`](./DEMO-NOTES.md) — beat sheet for the 5-minute video
-  walkthrough.
+  incidents (a leaked Postgres advisory lock through a pooled connection,
+  a devDependency pruned out of a production install) and how they were
+  diagnosed and fixed, not just the happy path.
+- [`DEMO-NOTES.md`](./DEMO-NOTES.md) — timed beat sheet for the 5-minute
+  video walkthrough.
 - [`.agent-logs/`](./.agent-logs/) — full raw prompt/response transcripts
   from the AI coding sessions that built this, captured automatically via
   Claude Code hooks (see `CAPTURE-TEST.md` for how that's wired up). The
