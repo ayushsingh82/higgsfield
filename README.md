@@ -49,33 +49,60 @@ separate frontend/backend, no external job queue. How a generation request
 actually flows through it:
 
 ```
-Browser (GenerationForm)
-  │  1. optional reference image → POST /api/uploads
-  │     (validates type/size, uploads to B2, returns a storage key)
-  │
-  │  2. POST /api/generations { prompt, referenceImageKey?, aspectRatio, durationSec }
-  ▼
-POST /api/generations/route.ts
-  │  - auth check, charge credits atomically (rejects with 402 if insufficient)
-  │  - INSERT Generation row, status=PENDING
-  │  - fires an in-process background task WITHOUT awaiting it, then
-  │    responds 202 immediately
-  ▼
-runGenerationJob() — same Node process, keeps running after the response
-  │  - status → IN_PROGRESS
-  │  - if a reference image key is set: mint a fresh presigned GET url for
-  │    it (src/lib/storage.ts), fetch the bytes
-  │  - call Hugging Face Inference Providers (src/lib/videogen.ts) —
-  │    provider+model chosen by task: `replicate` for text-to-video,
-  │    `wavespeed` for image-to-video (replicate doesn't support that task
-  │    on HF's router at all)
-  │  - on success: upload the returned video bytes to B2, status → COMPLETED
-  │  - on failure: status → FAILED, store the real error message, refund
-  │    credits atomically
-  ▼
-Browser (LibraryGrid) — polls GET /api/generations every 2s, renders
-  whatever the row's current status is (queued/generating/failed-with-
-  message/completed-with-player)
+┌───────────────────────────────────────────────────────────────────┐
+│ Browser — GenerationForm (/studio)                                 │
+│                                                                     │
+│  1. optional reference image                                       │
+│     ──▶ POST /api/uploads                                          │
+│         (validates type/size, uploads to B2, returns a storage key)│
+│                                                                     │
+│  2. POST /api/generations                                          │
+│     { prompt, referenceImageKey?, aspectRatio, durationSec }        │
+└──────────────────────────────┬──────────────────────────────────────┘
+                                │
+                                ▼
+┌───────────────────────────────────────────────────────────────────┐
+│ POST /api/generations  (route.ts)                                   │
+│                                                                     │
+│  • auth check                                                       │
+│  • charge credits atomically  ──▶  402 if insufficient               │
+│  • INSERT Generation row, status = PENDING                          │
+│  • fire runGenerationJob() WITHOUT awaiting it                      │
+│  • respond 202 immediately                                          │
+└──────────────────────────────┬──────────────────────────────────────┘
+                                │ same Node process, keeps running
+                                ▼
+┌───────────────────────────────────────────────────────────────────┐
+│ runGenerationJob()                                                   │
+│                                                                     │
+│  status → IN_PROGRESS                                               │
+│         │                                                           │
+│         ├─ referenceImageKey set?                                   │
+│         │     ──▶ mint presigned GET url (src/lib/storage.ts)       │
+│         │     ──▶ fetch reference image bytes                       │
+│         │                                                           │
+│         ▼                                                           │
+│  call Hugging Face Inference Providers (src/lib/videogen.ts)        │
+│     text-to-video  ──▶ provider "replicate"                         │
+│     image-to-video ──▶ provider "wavespeed"                         │
+│     (replicate has no image-to-video support on HF's router)        │
+│         │                                                           │
+│    ┌────┴─────────────────────┐   ┌──────────────────────────────┐ │
+│    │ success                  │   │ failure                      │ │
+│    │ upload video → B2        │   │ store real provider error    │ │
+│    │ status → COMPLETED       │   │ status → FAILED               │ │
+│    │                          │   │ refund credits atomically     │ │
+│    └──────────────────────────┘   └──────────────────────────────┘ │
+└──────────────────────────────┬──────────────────────────────────────┘
+                                │
+                                ▼
+┌───────────────────────────────────────────────────────────────────┐
+│ Browser — LibraryGrid (/library)                                    │
+│                                                                     │
+│  polls GET /api/generations every 2s, renders the row's current     │
+│  status: queued… → generating… → FAILED (message shown) or          │
+│  COMPLETED (video player)                                            │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
 This shape — fire-and-forget in the same process, not a separate queue —

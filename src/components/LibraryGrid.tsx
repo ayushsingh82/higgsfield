@@ -21,6 +21,12 @@ interface GenerationRow {
 const POLL_MS = 2000;
 const isTerminal = (status: GenerationStatus) => status === "COMPLETED" || status === "FAILED";
 
+/** A friendlier headline for known failure shapes — still honest (no fake success), just nicer than the raw provider string as the first thing read. */
+function friendlyFailureHeadline(raw: string | null): string {
+  if (raw && /credit/i.test(raw)) return "Out of generation credits right now.";
+  return "This generation didn't complete.";
+}
+
 export function LibraryGrid() {
   const [rows, setRows] = useState<GenerationRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -103,11 +109,22 @@ function GenerationCard({ row }: { row: GenerationRow }) {
       {row.status === "COMPLETED" && row.videoUrl && <VideoPlayer src={row.videoUrl} />}
 
       {row.status === "FAILED" && (
-        <div className="rounded-lg bg-[var(--surface-raised)] p-2.5">
-          <p className="mono mb-1 text-[0.65rem] uppercase tracking-wide text-[var(--muted-foreground)]">
-            Provider response (shown as-is, not summarized)
-          </p>
-          <p className="mono text-xs text-[var(--danger)]">{row.errorMessage ?? "generation failed"}</p>
+        <div className="space-y-2">
+          <div className="flex aspect-video flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--danger)]/40 bg-[var(--surface-raised)] p-4 text-center">
+            <FailedIcon />
+            <p className="text-sm text-[var(--foreground)]">{friendlyFailureHeadline(row.errorMessage)}</p>
+            <p className="mono text-xs text-[var(--muted-foreground)]">
+              No video was generated — the {row.creditsCost} credits were refunded automatically.
+            </p>
+          </div>
+          <details>
+            <summary className="mono cursor-pointer text-[0.65rem] uppercase tracking-wide text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]">
+              Show provider response
+            </summary>
+            <p className="mono mt-1.5 rounded-lg bg-[var(--surface-raised)] p-2.5 text-xs text-[var(--danger)]">
+              {row.errorMessage ?? "generation failed"}
+            </p>
+          </details>
         </div>
       )}
 
@@ -127,6 +144,26 @@ const STATUS_BADGE: Record<GenerationStatus, string> = {
   COMPLETED: "bg-[var(--ok-bg)] text-[var(--ok)]",
   FAILED: "bg-[var(--danger-bg)] text-[var(--danger)]",
 };
+
+function FailedIcon() {
+  return (
+    <svg
+      width="28"
+      height="28"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="text-[var(--danger)]"
+    >
+      <rect x="2.5" y="5.5" width="14" height="13" rx="2" />
+      <path d="M21.5 8.5v7l-5-2.5v-2z" />
+      <path d="M3 3l18 18" />
+    </svg>
+  );
+}
 
 function StatusBadge({ status }: { status: GenerationStatus }) {
   return (
