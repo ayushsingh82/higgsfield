@@ -65,6 +65,9 @@ export async function generateVideo({ prompt, referenceImageUrl }: GenerateVideo
 
 async function fetchAsBlob(url: string): Promise<Blob> {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`failed to fetch reference image (${res.status}): ${url}`);
+  // Deliberately not including `url` here: it's a presigned URL (bearer
+  // credential for its validity window), and this message can end up
+  // stored and shown to the user via Generation.errorMessage.
+  if (!res.ok) throw new Error(`failed to fetch reference image (HTTP ${res.status})`);
   return res.blob();
 }

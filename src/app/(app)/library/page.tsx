@@ -1,5 +1,7 @@
 import { LibraryGrid } from "@/components/LibraryGrid";
 
+export const metadata = { title: "Library" };
+
 export default function LibraryPage() {
   return (
     <main className="space-y-6">

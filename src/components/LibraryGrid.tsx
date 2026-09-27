@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { VideoPlayer } from "./VideoPlayer";
 
@@ -56,7 +57,13 @@ export function LibraryGrid() {
   if (rows.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-10 text-center">
-        <p className="mono text-sm text-[var(--muted-foreground)]">nothing yet — go generate something.</p>
+        <p className="mono mb-3 text-sm text-[var(--muted-foreground)]">Nothing here yet.</p>
+        <Link
+          href="/studio"
+          className="mono inline-flex rounded-full bg-[var(--brand)] px-4 py-2 text-sm font-medium text-[var(--brand-ink)] transition-opacity hover:opacity-90"
+        >
+          Generate your first video →
+        </Link>
       </div>
     );
   }
@@ -96,9 +103,12 @@ function GenerationCard({ row }: { row: GenerationRow }) {
       {row.status === "COMPLETED" && row.videoUrl && <VideoPlayer src={row.videoUrl} />}
 
       {row.status === "FAILED" && (
-        <p className="mono rounded-lg bg-[var(--surface-raised)] p-2.5 text-xs text-[var(--danger)]">
-          {row.errorMessage ?? "generation failed"}
-        </p>
+        <div className="rounded-lg bg-[var(--surface-raised)] p-2.5">
+          <p className="mono mb-1 text-[0.65rem] uppercase tracking-wide text-[var(--muted-foreground)]">
+            Provider response (shown as-is, not summarized)
+          </p>
+          <p className="mono text-xs text-[var(--danger)]">{row.errorMessage ?? "generation failed"}</p>
+        </div>
       )}
 
       {!isTerminal(row.status) && (

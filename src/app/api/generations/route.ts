@@ -7,6 +7,7 @@ import { generateVideo, pickProviderModel } from "@/lib/videogen";
 import { uploadObject, getSignedDownloadUrl } from "@/lib/storage";
 import { serializeGeneration } from "@/lib/serialize";
 import { GENERATION_COST } from "@/lib/constants";
+import { parseJsonBody } from "@/lib/http";
 
 export async function GET() {
   let userId: string;
@@ -32,14 +33,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
 
-  const body = await req.json();
-  const prompt: string = body.prompt;
+  const body = await parseJsonBody<{
+    prompt?: string;
+    referenceImageKey?: string;
+    aspectRatio?: string;
+    durationSec?: number;
+  }>(req);
+  const prompt = body?.prompt;
   // Storage key from POST /api/uploads, not a URL — the bucket is private,
   // so a fetchable URL is derived fresh (presigned) only when actually
   // needed, right before the generation call below, rather than stored.
-  const referenceImageKey: string | undefined = body.referenceImageKey;
-  const aspectRatio: string = body.aspectRatio ?? "16:9";
-  const durationSec: number = body.durationSec ?? 4;
+  const referenceImageKey = body?.referenceImageKey;
+  const aspectRatio = body?.aspectRatio ?? "16:9";
+  const durationSec = body?.durationSec ?? 4;
 
   if (!prompt) return NextResponse.json({ error: "prompt is required" }, { status: 400 });
 

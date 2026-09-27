@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { hashPassword, createSession } from "@/lib/auth";
+import { parseJsonBody } from "@/lib/http";
 
 export async function POST(req: NextRequest) {
-  const { email, password } = await req.json();
+  const body = await parseJsonBody<{ email?: string; password?: string }>(req);
+  const email = body?.email;
+  const password = body?.password;
   if (!email || !password) {
     return NextResponse.json({ error: "email and password are required" }, { status: 400 });
   }

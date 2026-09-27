@@ -7,6 +7,10 @@ import { ALLOWED_IMAGE_TYPES, ASPECT_RATIOS, DURATIONS_SEC, GENERATION_COST, MAX
 export function GenerationForm() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // A ref, not just `stage` state: state updates aren't guaranteed to be
+  // reflected in the disabled button before a near-simultaneous second
+  // click/Enter is processed. This guard is synchronous and closes that gap.
+  const submittingRef = useRef(false);
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] = useState<(typeof ASPECT_RATIOS)[number]>("16:9");
   const [durationSec, setDurationSec] = useState<(typeof DURATIONS_SEC)[number]>(4);
@@ -35,8 +39,18 @@ export function GenerationForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setError(null);
 
+    try {
+      await submit();
+    } finally {
+      submittingRef.current = false;
+    }
+  }
+
+  async function submit() {
     let referenceImageKey: string | undefined;
 
     if (referenceFile) {
@@ -45,8 +59,12 @@ export function GenerationForm() {
       form.append("file", referenceFile);
       const uploadRes = await fetch("/api/uploads", { method: "POST", body: form });
       if (!uploadRes.ok) {
-        const body = await uploadRes.json().catch(() => ({}));
         setStage("idle");
+        if (uploadRes.status === 401) {
+          setError("log in to generate");
+          return;
+        }
+        const body = await uploadRes.json().catch(() => ({}));
         setError(body.error ?? "reference image upload failed");
         return;
       }

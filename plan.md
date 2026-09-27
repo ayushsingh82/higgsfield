@@ -159,16 +159,26 @@ out the one open risk from above. Two findings:
    not yet produced a completed video via the JS client** — that confirmation
    is still pending a working credit balance.
 
+### Final: no HF/fal.ai top-up (settled)
+
+Confirmed final, not just deferred: the person decided not to top up either
+provider. The submission demo shows the real `FAILED` state (depleted
+credits, real provider error message) rather than a `COMPLETED` video —
+that's the accepted, documented reality by design, not something worked
+around or hidden. `DEMO-NOTES.md` is written around this on purpose.
+
 ## Remaining polish before submission
 
-- **Professional README** — currently a placeholder (status blurb only). Needs: what
-  it is, live link, screenshots/gif if easy, stack, local setup, and a pointer to
-  `plan.md`/`.agent-logs/` for process/scope reasoning, matching the quality bar of
-  the rest of the submission.
-- **UI polish pass** — current `/studio`/`/library` styling is functional but not
-  fully refined. Decision (explicit, not silent): restyle to reference pixovid.com's
-  color theme/layout patterns, at the person's direction, having flagged the tension
-  with "own visual identity" once — the person heard the concern and chose to proceed
-  anyway. Pull palette/spacing/layout *inspiration* from the (separately-owned)
-  `pixovid` repo already on disk; write original CSS/components rather than copying
-  its files directly. Interaction pattern and copy stay ours either way.
+- ~~**Professional README**~~ — done. Live link, "what's working now" vs. the
+  honest FAILED-state gap, stack, setup, test coverage, pointers to
+  `plan.md`/`DEPLOY.md`/`DEMO-NOTES.md`/`.agent-logs/`.
+- ~~**UI polish pass**~~ — done, and confirmed final (no further palette
+  changes requested). Restyled to reference pixovid.com's color theme/layout
+  patterns, at the person's direction, having flagged the tension with "own
+  visual identity" once — the person heard the concern and chose to proceed
+  anyway. Pulled palette/spacing/layout *inspiration* from the
+  (separately-owned) `pixovid` repo already on disk — its own `index.css`
+  literally describes itself as a "Higgsfield-style theme" (dark canvas,
+  electric-lime CTA, hot-pink secondary) — but wrote original CSS/components
+  rather than copying its files directly. Interaction pattern and copy stay
+  ours either way.

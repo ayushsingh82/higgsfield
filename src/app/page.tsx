@@ -4,7 +4,7 @@ export default function HomePage() {
   return (
     <main className="flex min-h-[70vh] flex-col justify-center space-y-6">
       <p className="mono text-xs uppercase tracking-[0.2em] text-[var(--brand)]">cinema studio</p>
-      <h1 className="max-w-lg text-5xl font-semibold tracking-tight text-balance">
+      <h1 className="max-w-lg text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
         Write it. <span className="text-[var(--muted-foreground)]">Shoot it.</span>
       </h1>
       <p className="max-w-md text-[var(--muted-foreground)]">

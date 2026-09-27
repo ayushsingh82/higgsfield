@@ -48,8 +48,9 @@ list. Pull straight from `plan.md`'s cut list:
    > real provider error is shown, and the credits I charged were
    > automatically refunded — not silently eaten." (Optionally show the
    > credit count in the header ticking back up.)
-6. If credits *were* topped up before recording: same beat, but ends on
-   the completed video playing in the library card instead.
+6. Settled, not just a fallback: no HF/fal.ai top-up (final decision, see
+   plan.md). The demo shows FAILED, on purpose — there is no COMPLETED
+   variant of this walkthrough to fall back to, and that's fine.
 
 ## 4. Judgment calls worth naming (3:30–4:15)
 
@@ -73,9 +74,10 @@ Pick 2–3, don't read all of these verbatim:
 
 ## Before recording
 
-- [ ] Confirm current HF credit status — decide live whether the demo
-      shows FAILED (honest, expected) or COMPLETED (if topped up)
-- [ ] Confirm the deployed URL is live and not localhost (brief requires it)
+- [ ] No live decision needed here anymore — no-top-up is final, the demo
+      shows FAILED
+- [ ] Confirm https://higgsfield-y9u7.onrender.com is live and not localhost
+      (brief requires it)
 - [ ] Load the deployed URL a minute or two before recording — Render's
       free tier spins down after ~15min idle, and a cold start (~30-60s)
       happening live on camera reads as the app being broken

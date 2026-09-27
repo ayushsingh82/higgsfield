@@ -12,7 +12,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "not authenticated" }, { status: 401 });
   }
 
-  const form = await req.formData();
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    // e.g. no multipart body at all — malformed request, not our bug.
+    return NextResponse.json({ error: "file is required" }, { status: 400 });
+  }
   const file = form.get("file");
   if (!(file instanceof Blob)) {
     return NextResponse.json({ error: "file is required" }, { status: 400 });
