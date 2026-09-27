@@ -26,7 +26,7 @@ through the app yet, only through direct provider smoke tests (see
 ## Setup
 
 ```
-cp .env.example .env   # fill in HF_TOKEN, DATABASE_URL, STORAGE_PUBLIC_BASE_URL
+cp .env.example .env   # fill in HF_TOKEN, DATABASE_URL, S3_*
 npm install
 npm run db:migrate
 npm run dev

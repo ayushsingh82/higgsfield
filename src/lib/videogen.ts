@@ -35,8 +35,10 @@ export interface VideoGenResult {
   video: Blob;
 }
 
-export function pickProviderModel(referenceImageUrl?: string) {
-  return referenceImageUrl ? TASK_PROVIDER["image-to-video"] : TASK_PROVIDER["text-to-video"];
+// Takes either a storage key or a resolved URL — it only checks presence,
+// the caller decides what "reference image" means at its layer.
+export function pickProviderModel(referenceImage?: string) {
+  return referenceImage ? TASK_PROVIDER["image-to-video"] : TASK_PROVIDER["text-to-video"];
 }
 
 export async function generateVideo({ prompt, referenceImageUrl }: GenerateVideoParams): Promise<VideoGenResult> {

@@ -37,7 +37,7 @@ export function GenerationForm() {
     e.preventDefault();
     setError(null);
 
-    let referenceImageUrl: string | undefined;
+    let referenceImageKey: string | undefined;
 
     if (referenceFile) {
       setStage("uploading");
@@ -50,14 +50,14 @@ export function GenerationForm() {
         setError(body.error ?? "reference image upload failed");
         return;
       }
-      referenceImageUrl = (await uploadRes.json()).url;
+      referenceImageKey = (await uploadRes.json()).key;
     }
 
     setStage("submitting");
     const res = await fetch("/api/generations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt, referenceImageUrl, aspectRatio, durationSec }),
+      body: JSON.stringify({ prompt, referenceImageKey, aspectRatio, durationSec }),
     });
     setStage("idle");
 

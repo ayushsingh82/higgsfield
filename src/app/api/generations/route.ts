@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUserId } from "@/lib/auth";
 import { chargeCredits, refundCredits, InsufficientCreditsError } from "@/lib/credits";
 import { generateVideo, pickProviderModel } from "@/lib/videogen";
-import { uploadObject } from "@/lib/storage";
+import { uploadObject, getSignedDownloadUrl } from "@/lib/storage";
 import { serializeGeneration } from "@/lib/serialize";
 import { GENERATION_COST } from "@/lib/constants";
 
@@ -21,7 +21,7 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(generations.map(serializeGeneration));
+  return NextResponse.json(await Promise.all(generations.map(serializeGeneration)));
 }
 
 export async function POST(req: NextRequest) {
@@ -34,13 +34,16 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const prompt: string = body.prompt;
-  const referenceImageUrl: string | undefined = body.referenceImageUrl;
+  // Storage key from POST /api/uploads, not a URL — the bucket is private,
+  // so a fetchable URL is derived fresh (presigned) only when actually
+  // needed, right before the generation call below, rather than stored.
+  const referenceImageKey: string | undefined = body.referenceImageKey;
   const aspectRatio: string = body.aspectRatio ?? "16:9";
   const durationSec: number = body.durationSec ?? 4;
 
   if (!prompt) return NextResponse.json({ error: "prompt is required" }, { status: 400 });
 
-  const { provider, model } = pickProviderModel(referenceImageUrl);
+  const { provider, model } = pickProviderModel(referenceImageKey);
 
   try {
     await chargeCredits(userId, GENERATION_COST);
@@ -55,7 +58,7 @@ export async function POST(req: NextRequest) {
     data: {
       userId,
       prompt,
-      referenceImageKey: referenceImageUrl ?? null,
+      referenceImageKey: referenceImageKey ?? null,
       provider,
       model,
       aspectRatio,
@@ -67,20 +70,23 @@ export async function POST(req: NextRequest) {
 
   // Fired without awaiting: this is the in-process background task the
   // architecture in plan.md relies on. Requires an always-on host
-  // (Railway/Render/Fly.io) — a serverless function would be killed before
-  // this resolves on a slow (e.g. image-to-video) call.
-  runGenerationJob(generation.id, { prompt, referenceImageUrl }).catch((err) => {
+  // (Render) — a serverless function would be killed before this resolves
+  // on a slow (e.g. image-to-video) call.
+  runGenerationJob(generation.id, { prompt, referenceImageKey }).catch((err) => {
     console.error(`generation ${generation.id} background job crashed`, err);
   });
 
-  return NextResponse.json(serializeGeneration(generation), { status: 202 });
+  return NextResponse.json(await serializeGeneration(generation), { status: 202 });
 }
 
-async function runGenerationJob(generationId: string, params: { prompt: string; referenceImageUrl?: string }) {
+async function runGenerationJob(generationId: string, params: { prompt: string; referenceImageKey?: string }) {
   await prisma.generation.update({ where: { id: generationId }, data: { status: "IN_PROGRESS" } });
 
   try {
-    const { video } = await generateVideo(params);
+    const referenceImageUrl = params.referenceImageKey
+      ? await getSignedDownloadUrl(params.referenceImageKey)
+      : undefined;
+    const { video } = await generateVideo({ prompt: params.prompt, referenceImageUrl });
     const outputKey = `generations/${generationId}/${randomUUID()}.mp4`;
     await uploadObject(outputKey, video, "video/mp4");
 

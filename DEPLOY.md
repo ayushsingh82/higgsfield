@@ -48,19 +48,27 @@ re-entering build settings by hand.
    `npm install && npm run build`, Start Command =
    `npx prisma migrate deploy && npm start`, Instance Type = Free.
 
-## 3. Object storage: any S3-compatible bucket (Cloudflare R2 recommended, no card required on the free tier)
+## 3. Object storage: any S3-compatible bucket (Backblaze B2 used here)
 
-1. Create a bucket (R2: dashboard → R2 → Create bucket).
-2. Create an API token/access key scoped to that bucket (R2: "Manage R2 API
-   Tokens").
-3. Make the bucket's contents publicly readable — either turn on the
-   provider's public bucket URL, or (recommended, more control) put a CDN /
-   custom domain in front of it. That public base URL is
-   `STORAGE_PUBLIC_BASE_URL`.
-4. Note down: endpoint URL (`S3_ENDPOINT`), access key id
-   (`S3_ACCESS_KEY_ID`), secret key (`S3_SECRET_ACCESS_KEY`), bucket name
-   (`S3_BUCKET`), region (`S3_REGION` — R2 doesn't really use this, `auto`
-   is fine and is already the code's default if you leave it unset).
+The bucket is **private**, not public — deliberately, not a workaround.
+B2 wants either payment history or a one-time fee to allow a public
+bucket; a private bucket + short-lived presigned GET URLs (already wired
+in `src/lib/storage.ts`) is arguably better practice regardless (less
+exposure surface), so that's the real design, not a placeholder until
+something better comes along.
+
+1. Create a bucket (B2: dashboard → Buckets → Create a Bucket). Leave it
+   **Private**.
+2. Create an application key scoped to that bucket (B2: App Keys → Add a
+   New Application Key).
+3. Note down: the S3-compatible endpoint URL (`S3_ENDPOINT`, looks like
+   `https://s3.<region>.backblazeb2.com`), the key id
+   (`S3_ACCESS_KEY_ID`), the application key (`S3_SECRET_ACCESS_KEY`),
+   bucket name (`S3_BUCKET`), region (`S3_REGION`, e.g. `us-east-005`).
+4. No public base URL / CDN needed — the app generates a fresh presigned
+   URL (1 hour expiry) per object whenever one is actually needed
+   (viewing a video in the library, or fetching a reference image during
+   generation), not a permanent public link.
 
 ## 4. Environment variables to set in Render (Dashboard → your service → Environment)
 
@@ -74,7 +82,6 @@ re-entering build settings by hand.
 | `S3_SECRET_ACCESS_KEY` | from step 3 |
 | `S3_BUCKET` | from step 3 |
 | `S3_REGION` | from step 3 (or leave unset — defaults to `auto`) |
-| `STORAGE_PUBLIC_BASE_URL` | from step 3 |
 | `NODE_ENV` | `production` (Render sets this by default, but confirm it's there) |
 
 `FAL_KEY` doesn't need to be set in production — it's unused by the app

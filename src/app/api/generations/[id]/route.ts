@@ -17,5 +17,5 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  return NextResponse.json(serializeGeneration(generation));
+  return NextResponse.json(await serializeGeneration(generation));
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getCurrentUserId } from "@/lib/auth";
-import { uploadObject, getPublicUrl } from "@/lib/storage";
+import { uploadObject } from "@/lib/storage";
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
@@ -31,5 +31,10 @@ export async function POST(req: NextRequest) {
   const key = `uploads/${userId}/${randomUUID()}.${ext}`;
   await uploadObject(key, file, file.type);
 
-  return NextResponse.json({ url: getPublicUrl(key) }, { status: 201 });
+  // The bucket is private — return the storage key, not a URL. The client
+  // doesn't need to view this upload itself (no image preview in the
+  // form); it just passes the key back on POST /api/generations, which
+  // resolves a fresh presigned URL only when actually fetching it for the
+  // generation call.
+  return NextResponse.json({ key }, { status: 201 });
 }

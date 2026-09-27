@@ -1,9 +1,9 @@
 import type { Generation } from "@prisma/client";
-import { getPublicUrl } from "./storage";
+import { getSignedDownloadUrl } from "./storage";
 
-export function serializeGeneration(gen: Generation) {
+export async function serializeGeneration(gen: Generation) {
   return {
     ...gen,
-    videoUrl: gen.outputKey ? getPublicUrl(gen.outputKey) : null,
+    videoUrl: gen.outputKey ? await getSignedDownloadUrl(gen.outputKey) : null,
   };
 }
